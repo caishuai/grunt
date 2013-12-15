@@ -1,0 +1,358 @@
+The grunt API
+Grunt所有的内置方法和属性都通过grunt 对象予以暴露，该对象将通过grunt.js gruntfile或者tasks file中的module.exports 予以输出。
+
+举例，你项目的grunt.js gruntfile看上去将和这个很类似：
+
+module.exports = function(grunt) {
+
+  // Project configuration.
+  grunt.initConfig({
+    lint: {
+      all: ['grunt.js', 'lib/**/*.js', 'test/**/*.js']
+    },
+    jshint: {
+      options: {
+        browser: true
+      }
+    }
+  });
+
+  // Load tasks from "grunt-sample" grunt plugin installed via Npm.
+  grunt.loadNpmTasks('grunt-sample');
+
+  // Default task.
+  grunt.registerTask('default', 'lint sample');
+
+};
+如果你正在创建一个grunt plugin看上去将和这个示例很类似：
+
+module.exports = function(grunt) {
+
+  // Create a new task.
+  grunt.registerTask('awesome', 'Print out "awesome!!!"', function() {
+    var awesome = grunt.helper('awesome');
+    grunt.log.write(awesome);
+  });
+
+  // Register a helper.
+  grunt.registerHelper('awesome', function() {
+    return 'awesome!!!';
+  });
+
+};
+但是这些都仅仅是示例而已，如果想要看到更多信息，请继续阅读之下内容。
+
+A Very Important Note
+
+grunt.js gruntfile 必须 包含如下代码， 一个文件 仅 一次。 如果没有这串代码，grunt将无法工作。为了看上去简明扼要，这串具有包裹意义的代码将在之后的示例中去除，但是实际中它必须存在。承如之上那个示例。
+
+module.exports = function(grunt) {
+  // Your grunt code goes in here.
+};
+Config
+
+Note 如下所列的这些方法除了在grunt对象中存在，也在grunt.config存在。
+
+grunt.initConfig
+
+在当前项目中初始化配置对象。指定的configObject在task 和 helper中将被使用，也可以通过[grunt.config]https://github.com/gruntjs/grunt/blob/0.3-stable/docs/api_config.md)中相关的方法获取。
+
+差不多每个项目都会调用grunt.js gruntfile 这个方法。
+
+Note 当配置对象被初始化时所有被指明的<config> 和 <json> directives 都将自动运行。
+
+grunt.initConfig(configObject)
+如下通过对lint task简单配置进行示例：
+
+grunt.initConfig({
+  lint: {
+    all: ['lib/*.js', 'test/*.js', 'grunt.js']
+  }
+});
+查看configuring grunt 页面获取更多的配置示例。
+
+该方法是grunt.config.init的别名方法。
+
+Creating Tasks
+
+Task是grunt最基本的功能。正如你经常做的事情，如lint 和 test。每次grunt运行的时候，你指定一个或者多个任务去执行，你可以指定所有你想要grunt去执行的事情。
+
+如果你并未指明一个任务，但是一个命名为"default"的任务已经被定义，那么grunt将（不出所料）默认执行该任务。
+
+Note 如下所列的这些方法除了在grunt对象中存在，也在grunt.task存在。
+
+grunt.registerTask
+
+注册一个"alias task"或者一个task函数。该方法支持如下两种方式：
+
+Alias task
+
+如果一个任务列一旦被指定，那么这个新的task将会是一个或者多个任务的别名。无论何时这个"alias task"被执行了，在taskList中被指明的每个任务都会按序执行。taskList可以是以空格分割的字符串或者以任务名称而组成的一个数组。
+
+grunt.registerTask(taskName, taskList)
+之下就是定义了一个以"default" 为名的别名任务，如果grunt并未通过任何命令来执行，那么"lint", "qunit", "concat" and "min"这些任务将被自动执行。
+
+task.registerTask('default', 'lint qunit concat min');
+Function task
+
+如果 description 和 taskFunction 都做为参数传递进来，那么该函数在任何时候都可以被执行。此外，特别指明的描述信息在使用grunt --help时会被显示出来。同时Task所指定的属性和方法在该任务函数内都可以在this对象中的属性被获取到。如果运行不成功，那该函数将返回false 。
+
+Note grunt.registerMultiTask方法，如下所示，它被熟知为多任务。
+
+grunt.registerTask(taskName, description, taskFunction)
+在如下示例中如果grunt以如下命令行运行grunt foo:testing:123，那么将打印日志foo, testing 123。如果任务不携带任何参数运行，那么将打印日志foo, no args。
+
+grunt.registerTask('foo', 'A sample task that logs stuff.', function(arg1, arg2) {
+  if (arguments.length === 0) {
+    grunt.log.writeln(this.name + ", no args");
+  } else {
+    grunt.log.writeln(this.name + ", " + arg1 + " " + arg2);
+  }
+});
+查看creating tasks 文档以获取更多的task和alias task示例。
+
+该方法是grunt.task.registerTask 方法的别名。
+
+grunt.registerMultiTask
+
+注册一个"multi task."
+
+一个多任务在运行时，运行任务目标并没有被指明的时候那么该任务将默认执行所有内部所罗列的子属性（也叫做目标任务）。
+
+除了默认方式去获取属性和方法，在多任务函数体内可以通过this对象来获取内部属性和方法。
+
+很多内置任务中，包括lint task, https://github.com/gruntjs/grunt/blob/0.3-stable/docs/task_concat.md and min task这些任务都是多任务。
+
+grunt.registerMultiTask(taskName, description, taskFunction)
+给出的如下配置信息，那么当grunt 运行 grunt log:foo 时 将会打印日志 foo: 1,2,3 ，如果运行 grunt log:bar 那么将会打印日志bar: hello world。然而如果运行grunt log，那么将会打印日志foo: 1,2,3，然后是bar: hello world 然后是baz: false。
+
+grunt.initConfig({
+  log: {
+    foo: [1, 2, 3],
+    bar: 'hello world',
+    baz: false
+  }
+});
+
+grunt.registerMultiTask('log', 'Log stuff.', function() {
+  grunt.log.writeln(this.target + ': ' + this.data);
+});
+查看文档creating tasks以获取更多的关于多任务的示例。
+
+该方法是grunt.task.registerMultiTask方法的别名。
+
+grunt.registerInitTask
+
+Register an "init task." An init task is a task that doesn't require any configuration data, and as such will still run even if grunt can't find a grunt.js gruntfile. The included init task is an example of an "init task."
+
+grunt.registerInitTask(taskName, description, taskFunction)
+For an init task example, see the init task source.
+
+This method is an alias for the grunt.task.registerInitTask method.
+
+grunt.renameTask
+
+重命名一个任务。如果你想要覆盖一个任务的默认行为并与老的命名共存时候重命名显得尤为有用。
+
+grunt.renameTask(oldname, newname)
+该方法是grunt.task.renameTask方法的别名。
+
+Inside Tasks
+
+An object is made available as this inside each task function that contains a number of useful task-specific properties and methods. This same object is also exposed as grunt.task.current for use in templates.
+
+this.async / grunt.task.current.async
+
+如果某个任务是异步的，那么该方法被调用时必须通知grunt等待。 它返回一个"done"的手柄并且该函数在任务完成之际已经被执行过。false可以做为参数传递给done函数告知异步引入的任务该任务已经失败。如果该没有没有执行那么这些任务将被同步执行。
+
+// Tell grunt this task is asynchronous.
+var done = this.async();
+// Your async code.
+setTimeout(function() {
+  // Let's simulate an error, sometimes.
+  var success = Math.random() > 0.5;
+  // All done!
+  done(success);
+}, 1000);
+this.requires / grunt.task.current.requires
+
+如果某个任务它依赖一个任务或者一组任务的成功执行，（this.requires / grunt.task.current.requires）这个方法可以在其他任务没有执行或者执行失败后迫使grunt中止。任务列表可以是以任务名称并以空格分割的字符串或者纯由名称构成的数组，或者独立的任务名称和参数。
+
+Note 该方法事实上并不会执行指定的这些任务，如果当taskList并没有全部成功运行，那么它只会中断当前任务。
+
+this.requires(taskList)
+this.requiresConfig / grunt.task.current.requiresConfig
+
+如果由于一个或者多个required config的属性缺失导致任务失败。一个或者多个字符串或者数组的属性可以通过如下方式指定。
+
+this.requiresConfig(prop [, prop [, ...]])
+查看grunt.config documentation 文档以获取更多的关于config的信息。
+
+该方法是grunt.config.requires方法的别名。
+
+this.name / grunt.task.current.name
+
+任务的名称，就如在grunt.registerTask中定义的。举例来说，如果一个名为"sample"的任务通过grunt sample 或 grunt sample:foo被执行了，那么在任务函数内，this.name的值应该为"sample"。
+
+this.nameArgs / grunt.task.current.nameArgs
+
+任务的名称，就如那些特别通过冒号来分割的参数或者标注在命令行中。举例来说，如果一个名为"sample"的任务通过grunt sample:foo被执行了，那么在任务函数内，this.nameArgs的值应该为"sample:foo"。
+
+this.args / grunt.task.current.args
+
+由传递给任务的所有参数组成的一组数组。举例来说，如果一个名为"sample"的任务通过grunt sample:foo:bar被执行了，那么在任务函数内，this.flags的值应该为["foo", "bar"]。
+
+Note 在multi task中 该目标对象将从this.args数组中移除并同时不会被传递到任务函数体内。
+
+this.flags / grunt.task.current.flags
+
+通过传递给任务的参数而生成的一个对象。举例来说，如果一个名为"sample"的任务通过grunt sample:foo:bar被执行了，那么在任务函数内，this.args的值应该为{foo: true, bar: true}。在多任务中，人物名称不能被设置成如flag形式。
+
+this.errorCount / grunt.task.current.errorCount
+
+在任务过程中一共发生错误grunt.log.error 的次数。 这个方法可以被用在当在执行任务过程中打印任务的出错信息。
+
+Inside Multi Tasks
+
+this.target / grunt.task.current.target
+
+在多任务中，该名称是当前正在迭代的任务的名称。举例来说，如果一个配置数据为{sample: {foo: "bar"}}的"sample"的多任务，其通过grunt sample:foo被执行了，那么在任务函数内，this.target的值应该为"foo"。
+
+this.data / grunt.task.current.data
+
+在多任务中，该数据值为存储在grunt配置对象中给定的target的值。举例来说，如果一个配置数据为{sample: {foo: "bar"}}的"sample"的多任务，其通过grunt sample:foo被执行了，那么在任务函数内，this.data的值应该为"bar"。
+
+this.file / grunt.task.current.file
+
+在多任务中，target的数据可以存储为两种不同的格式。一个是相对“紧凑”的格式，和另外一个更为灵活的“完整”格式。当紧凑型的格式被使用的时候，那么键和值可以分别通过this.file.dest和this.file.src来获得。当完整格式被使用的时候，特别指明的src 和 dest 值将被用作this.file.dest 和 this.file.src。
+
+Note 当完整格式被使用的时候，扩展grunt templatestemplates支持src 和 dest ，他们仅对dest的文件路径有效。
+
+grunt.initConfig({
+  concat: {
+    // This is the "compact" format.
+    'dist/built.js': ['src/file1.js', 'src/file2.js'],
+    // This is the "full" format.
+    built: {
+      src: ['src/file1.js', 'src/file2.js'],
+      dest: 'dist/built.js'
+    }
+  }
+});
+Loading Externally-Defined Tasks
+
+对很多project而言，task和helper将会在grunt.js gruntfile中被定义。对于大型project，或者在许多情形下，helper需要跨项目分享，task需要从一个或者多个外部的目录加载，或者通过NPM安装grunt插件。
+
+Note 如下所列的这些方法除了在grunt对象中存在，也在grunt.task存在。
+
+grunt.loadTasks
+
+从指定的文件夹加载task相关文件，指定文件夹需相对于文件grunt.js gruntfile。该方法可以从本地加载grunt插件中task相关文件，只需要指明任务的子目录即可。
+
+grunt.loadTasks(tasksPath)
+该方法是grunt.task.loadTasks方法的别名。
+
+grunt.loadNpmTasks
+
+从指定的grunt加载task和help。该插件必须通过npm安装在本地，与此同时必须与grunt.js gruntfile相对。Grunt插件可以通过gruntplugin init template来创建。
+
+grunt.loadNpmTasks(pluginName)
+该方法是grunt.task.loadNpmTasks方法的别名。
+
+Defining and Executing Helpers
+
+Helper是一些非常实用的函数，它可以在任何任务中都可以被使用。
+
+举例，在min task中，压缩代码这个主要的工作大部分是由uglify helper所完成，所以在其他任务中如果有需要压缩代码就可以使用这个helper。
+
+查看built-in helpers 所列示例。
+
+Note 如下所列的这些方法除了在grunt对象中存在，也在grunt.task存在。
+
+grunt.registerHelper
+
+注册一个在任何任务中都可以被调用的函数 - helper。当通过某个指令该helper被调用的时候，那么这个helper内this.directive 将为true。
+
+grunt.registerHelper(helperName, helperFunction)
+在这个示例中的helper，传入数字1 和 2将返回数值 3 。
+
+grunt.registerHelper('add_two_nums', function(a, b) {
+  return a + b;
+});
+该方法是grunt.task.registerHelper方法的别名。
+
+grunt.renameHelper
+
+重命名一个helper。这对于那些你想要覆盖默认行为的helper却又能保留老的命名非常有用（为了完全避免重新创建一个已经被创建过的任务，因为有时候你只是需要去覆盖或者扩展某个内建helper而已）。
+
+grunt.renameHelper(oldname, newname)
+该方法是grunt.task.renameHelper方法的别名。
+
+grunt.helper
+
+调用一个被注册过的helper。
+
+grunt.helper(helperName [, arguments...])
+在这个示例中，就是之前定义的add_two_nums的helper的调用。
+
+grunt.helper('add_two_nums', 1, 2) // 3
+该方法是grunt.task.helper方法的别名。
+
+Warnings and Fatal Errors
+
+如果在某个helper或task中发生了某些致命错误（或者即将发生重大错误），他能够强制让grunt终止执行。 想要知道管多关于grunt退出的代码请查看文档exit codes documentation。
+
+grunt.warn
+
+显示一个警告并立刻终止grunt。如果在命令行中添加了强制运行的配置项--force，那么Grunt还是会继续执行。 error的提要可以是一个字符串或者是一个出错对象。
+
+grunt.warn(error [, errorcode])
+如果在命令行中特别指定--debug 9，于此同时错误对象也被指定出来，那么将会记录堆栈信息。
+
+该方法是grunt.fail.warn方法的别名。
+
+grunt.fatal
+
+显示一个警告并立刻终止grunt。error的提要可以是一个字符串或者是一个出错对象。
+
+grunt.fatal(error [, errorcode])
+如果在命令行中特别指定--debug 9，于此同时错误对象也被指定出来，那么将会记录堆栈信息。
+
+该方法是grunt.fail.fatal方法的别名。
+
+Command-line Options
+
+grunt.option
+
+检索命令行中的选项值，例如 debug 。 Note 所有命令行的选项值都可以被反过来测试，例如 no-debug。
+
+grunt.option(optionName)
+Miscellaneous
+
+grunt.version
+
+当前grunt版本，字符串形式。
+
+grunt.version
+grunt.npmTasks
+
+在一个grunt plugin 内部,这个方法必须被执行以告知grunt去哪儿查找这些插件的任务文件。
+
+npmModuleName必须是grunt plugin在Npm中的模块的名称。文档gruntplugin init template将会教你如何自动为例进行所有配置。
+
+grunt.npmTasks(npmModuleName)
+Other Methods
+
+grunt.utils - 各式各样的实用工具，包含Underscore.js, Async and Hooker。
+
+grunt.template - Underscore.js版本处理以及与其模板相关的一些方法。
+
+grunt.task - 注册、运行task，helper，以及加载外部task。
+
+grunt.file - 通配扩展, 文件读写, 目录操作.
+
+grunt.config - 在grunt.js gruntfile中定义的配置数据。
+
+grunt.log, grunt.verbose - 在console中输出消息。
+
+grunt.fail - 当碰到非常重大错误时使用。
